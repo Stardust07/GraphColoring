@@ -13,6 +13,8 @@ public class Main {
 	public static int[][] conflicts;
 	public static int node, color, reduce;
 	public static String[] instances = {"DSJC125.1","DSJC125.9","DSJC250.5","DSJC500.1","DSJC500.5"};
+	public static int times = 0;
+	final static int THRESHOLD = 3;
 	
 	public static void init() {
 		graph = new boolean[n][n];
@@ -32,10 +34,8 @@ public class Main {
         try {
             reader = new BufferedReader(new FileReader(file));
             String tempString = null;
-            int line = 1;
-            // 一次读入一行，直到读入null为文件结束
+
             while ((tempString = reader.readLine()) != null) {
-                // 显示行号
             	if(tempString.startsWith("p edge")) {
             		String strings[] = tempString.split(" ");
             		n = Integer.parseInt(strings[2]);
@@ -46,7 +46,6 @@ public class Main {
             				graph[Integer.parseInt(strings[2]) - 1][Integer.parseInt(strings[1]) - 1]
             						= true;
             	}
-                line++;
             }
             reader.close();
         } catch (IOException e) {
@@ -82,7 +81,7 @@ public class Main {
 				}
 			}
 		}
-		maxColor++;
+		maxColor++;      //需要的颜色数
 		k = maxColor - 1;
 	}
 	
@@ -107,13 +106,6 @@ public class Main {
 //		
 		for(int i = 0; i < n; i++) {
 			solution[i] = random.nextInt(k);
-//			for(int j = 0; j < i; j++) {
-//				if(graph[i][j] && solution[i] == solution[j]) {
-//					f++;
-//				}
-//			}
-		}
-		for(int i = 0; i < n; i++) {
 			for(int j = 0; j < i; j++) {
 				if(graph[i][j] && solution[i] == solution[j]) {
 					f++;
@@ -144,7 +136,7 @@ public class Main {
 		}
 	}
 	
-	public static boolean findOperation() {
+	public static boolean findOperation(boolean ifRestart) {
 		int numberOfFound = 0;
 		reduce = 0;
 		for(int i = 0; i < n; i++) {
@@ -157,7 +149,7 @@ public class Main {
 				} else if(reduce != 0 && conflicts[i][c] - conflicts[i][solution[i]] == reduce) {
 					numberOfFound++;
 					Random random = new Random();
-					if(!(random.nextInt(numberOfFound) < 1)) {  //1/numberOfFound的概率取新的
+					if(!(random.nextInt(numberOfFound) < 1)) {  //1/numberOfFound的概率取旧的
 						node = i;
 						color = c;
 					}
@@ -165,8 +157,17 @@ public class Main {
 			}
 		}
 		if(numberOfFound == 0) {
+			if(times < THRESHOLD) {   //不再下降时随机更换一个结点的颜色
+				Random random = new Random();
+				node = random.nextInt(n);
+				color = random.nextInt(k);
+				reduce = conflicts[node][color] - conflicts[node][solution[node]];
+				times++;
+				return true;
+			}
 			return false;
 		}
+		times = 0;
 		return true;
 	}
 	
@@ -183,7 +184,7 @@ public class Main {
 //			System.out.println();
 //		}
 		while(f > 0) {
-			if(findOperation()){
+			if(findOperation(true)){
 				//System.out.println(node+"\t"+color+"\t"+reduce);
 				updateConflicts();
 				solution[node] = color;
@@ -192,10 +193,9 @@ public class Main {
 				System.out.println(k+"no");
 				return false;
 			}
-			
 		}
 		
-		System.out.println(k+"yes");
+		System.out.print(k+"yes"+"\t"); System.out.println(check());
 //		for(int i = 0; i < n; i++) {
 //			System.out.println(solution[i]);
 //		}
@@ -203,10 +203,10 @@ public class Main {
 	}
 	
 	public static void main(String[] args){
-		readInstance("F:\\"+instances[0]+".col.txt");
-//		readInstance("F:\\1.txt");
+		readInstance("D:\\qym\\workspace\\GraphColoring\\"+instances[4]+".col.txt");
+//		readInstance("E:\\BaiduYunDownload\\GraphColoring\\1.txt");
 		findMaxColor(); //求可以找到一个解的颜色数
-		System.out.println(check());
+//		k = n;
 		while(k > 0) {
 			if(!judge()) {
 				break;
@@ -214,6 +214,7 @@ public class Main {
 			k--;
 		}
 		k++;
+		System.out.println("greedy:" + maxColor);
 		System.out.println("final k:" + k);
 	}
 }
