@@ -11,9 +11,12 @@ public class Main {
 	public static int[] solution;
 	public static boolean[][] graph;
 	public static int[][] conflicts;
+	public static int[][] tabuTable;
+	public static int iteration = 0, tabuStep;
 	public static int node, color, reduce;
 	public static String[] instances = {"DSJC125.1","DSJC125.9","DSJC250.5","DSJC500.1","DSJC500.5"};
-	public static int times = 0;
+	public static int bestInHistory;
+	public static int time = 0;
 	final static int THRESHOLD = 3;
 	
 	public static void init() {
@@ -26,6 +29,7 @@ public class Main {
 			solution[i] = n;
 		}
 		maxColor = 0;
+		tabuStep = 20;
     }
 	
 	public static void readInstance(String fileName){
@@ -115,9 +119,11 @@ public class Main {
 	}
 	
 	public static void initConflicts() {
+		tabuTable = new int[n][k];
 		conflicts = new int[n][k];
 		for(int i = 0; i < n; i++) {
 			for(int c = 0; c < k; c++) {
+				tabuTable[i][c] = 0;
 				for(int j = 0; j < n; j++) {
 					if(graph[i][j] && solution[j] == c) {
 						conflicts[i][c]++;
@@ -136,59 +142,84 @@ public class Main {
 		}
 	}
 	
-	public static boolean findOperation(boolean ifRestart) {
+	public static boolean findOperation() {
 		int numberOfFound = 0;
-		reduce = 0;
+		reduce = Integer.MAX_VALUE;
+		int tabuNode = 0, tabuColor = 0, tabuReduce = Integer.MAX_VALUE, tabuFound = 0;
 		for(int i = 0; i < n; i++) {
+			if(conflicts[i][solution[i]] == 0) { //TODO
+				continue;
+			}
 			for(int c = 0; c < k; c++) {
-				if(conflicts[i][c] - conflicts[i][solution[i]] < reduce) {
+				if(c == solution[i]) {
+					continue;
+				}
+				if(iteration <= tabuTable[i][c]) {   //被禁
+					if(conflicts[i][c] - conflicts[i][solution[i]] < tabuReduce) {
+						tabuFound = 1;
+						tabuReduce = conflicts[i][c] - conflicts[i][solution[i]];
+						tabuNode = i;
+						tabuColor = c;
+					} else if(conflicts[i][c] - conflicts[i][solution[i]] == tabuReduce) {
+						tabuFound++;
+						Random random = new Random();
+						if(random.nextInt(tabuFound) < 1) {  //1/numberOfFound的概率取新的
+							tabuNode = i;
+							tabuColor = c;
+						}
+					}
+				} else if(conflicts[i][c] - conflicts[i][solution[i]] < reduce) {
 					numberOfFound = 1;
 					reduce = conflicts[i][c] - conflicts[i][solution[i]];
 					node = i;
 					color = c;
-				} else if(reduce != 0 && conflicts[i][c] - conflicts[i][solution[i]] == reduce) {
+				} else if(conflicts[i][c] - conflicts[i][solution[i]] == reduce) {
 					numberOfFound++;
 					Random random = new Random();
-					if(!(random.nextInt(numberOfFound) < 1)) {  //1/numberOfFound的概率取旧的
+					if(random.nextInt(numberOfFound) < 1) {  //1/numberOfFound的概率取新的
 						node = i;
 						color = c;
 					}
 				}
 			}
 		}
+		if(tabuReduce < reduce && tabuReduce + f < bestInHistory) {
+			node = tabuNode;
+			color = tabuColor;
+			reduce = tabuReduce;
+			tabuTable[node][color] = iteration;
+		}
+//		System.out.println(iteration+":\t"+"node:"+node + "\t"+"color:"+color + "\t"+"reduce:"+reduce);
 		if(numberOfFound == 0) {
-			if(times < THRESHOLD) {   //不再下降时随机更换一个结点的颜色
-				Random random = new Random();
-				node = random.nextInt(n);
-				color = random.nextInt(k);
-				reduce = conflicts[node][color] - conflicts[node][solution[node]];
-				times++;
-				return true;
-			}
 			return false;
 		}
-		times = 0;
 		return true;
 	}
 	
 	public static boolean judge(){  //判断k种颜色是否可行
 		initSolution();
-//		for(int i = 0; i < n; i++) {
-//			System.out.println(solution[i]);
-//		}
 		initConflicts();
-//		for(int i = 0; i < n; i++) {
-//			for(int j = 0; j < k; j++) {
-//				System.out.print(conflicts[i][j]+"\t");
-//			}
-//			System.out.println();
-//		}
+		bestInHistory = f;
+		iteration = 0;
 		while(f > 0) {
-			if(findOperation(true)){
+			if(time > 10000 * n) {
+//				System.out.println(time+":\t"+f+"\t");
+//				return false;
+			}
+			iteration++;
+			if(findOperation()){
 				//System.out.println(node+"\t"+color+"\t"+reduce);
+				System.out.println(iteration+":node"+node+"("+solution[node]+"to"+color+")\t"+(f+reduce)+"\t");
 				updateConflicts();
+				tabuTable[node][solution[node]] = iteration + tabuStep;
 				solution[node] = color;
 				f += reduce;
+				if(f < bestInHistory) {
+					time = 0;
+					bestInHistory = f;
+				} else {
+					time++;
+				}
 			} else {
 				System.out.println(k+"no");
 				return false;
@@ -196,25 +227,24 @@ public class Main {
 		}
 		
 		System.out.print(k+"yes"+"\t"); System.out.println(check());
-//		for(int i = 0; i < n; i++) {
-//			System.out.println(solution[i]);
-//		}
 		return true;
 	}
 	
 	public static void main(String[] args){
 		readInstance("D:\\qym\\workspace\\GraphColoring\\"+instances[4]+".col.txt");
-//		readInstance("E:\\BaiduYunDownload\\GraphColoring\\1.txt");
 		findMaxColor(); //求可以找到一个解的颜色数
-//		k = n;
-		while(k > 0) {
-			if(!judge()) {
-				break;
-			}
-			k--;
-		}
-		k++;
-		System.out.println("greedy:" + maxColor);
+		long time = System.currentTimeMillis(); 
+		k = 49;
+		judge();
+//		while(k > 0) {
+//			if(!judge()) {
+//				break;
+//			}
+//			k--;
+//		}
+//		k++;
+//		System.out.println("greedy:" + maxColor);
 		System.out.println("final k:" + k);
+		System.out.println("time:" + (System.currentTimeMillis() - time) / 1000);
 	}
 }
