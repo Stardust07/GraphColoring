@@ -29,7 +29,7 @@ public class Main {
 			solution[i] = n;
 		}
 		maxColor = 0;
-		tabuStep = 20;
+		tabuStep = 15;
     }
 	
 	public static void readInstance(String fileName){
@@ -147,7 +147,7 @@ public class Main {
 		reduce = Integer.MAX_VALUE;
 		int tabuNode = 0, tabuColor = 0, tabuReduce = Integer.MAX_VALUE, tabuFound = 0;
 		for(int i = 0; i < n; i++) {
-			if(conflicts[i][solution[i]] == 0) { //TODO
+			if(conflicts[i][solution[i]] == 0) { //TODO 
 				continue;
 			}
 			for(int c = 0; c < k; c++) {
@@ -187,7 +187,7 @@ public class Main {
 			node = tabuNode;
 			color = tabuColor;
 			reduce = tabuReduce;
-			tabuTable[node][color] = iteration;
+//			tabuTable[node][color] = iteration;
 		}
 //		System.out.println(iteration+":\t"+"node:"+node + "\t"+"color:"+color + "\t"+"reduce:"+reduce);
 		if(numberOfFound == 0) {
@@ -196,21 +196,33 @@ public class Main {
 		return true;
 	}
 	
+	public static int getNc() {
+		int res = 0;
+		for(int i = 0; i < n; i++) {
+			for(int j = 0; j < k; j++) {
+				if(conflicts[i][j] > 0) {
+					res++;
+					break;
+				}
+			}
+		}
+		return res;
+	}
+	
 	public static boolean judge(){  //判断k种颜色是否可行
 		initSolution();
 		initConflicts();
 		bestInHistory = f;
 		iteration = 0;
+		long start = System.currentTimeMillis(); 
 		while(f > 0) {
-			if(time > 10000 * n) {
-//				System.out.println(time+":\t"+f+"\t");
-//				return false;
-			}
 			iteration++;
 			if(findOperation()){
-				//System.out.println(node+"\t"+color+"\t"+reduce);
-				System.out.println(iteration+":node"+node+"("+solution[node]+"to"+color+")\t"+(f+reduce)+"\t");
+				System.out.println(iteration + ":" + (f + reduce) + "\t" + bestInHistory);
+//				"node" + node + "(" + solution[node] + "to" + color+")\t"
 				updateConflicts();
+				Random random = new Random();
+				tabuStep = f + random.nextInt(10);
 				tabuTable[node][solution[node]] = iteration + tabuStep;
 				solution[node] = color;
 				f += reduce;
@@ -224,6 +236,9 @@ public class Main {
 				System.out.println(k+"no");
 				return false;
 			}
+			if(System.currentTimeMillis() - start > 60 * 60 * 1000) {
+				return false;
+			}
 		}
 		
 		System.out.print(k+"yes"+"\t"); System.out.println(check());
@@ -231,10 +246,10 @@ public class Main {
 	}
 	
 	public static void main(String[] args){
-		readInstance("D:\\qym\\workspace\\GraphColoring\\"+instances[4]+".col.txt");
+		readInstance("D:\\qym\\workspace\\GraphColoring\\"+instances[3]+".col.txt");
 		findMaxColor(); //求可以找到一个解的颜色数
 		long time = System.currentTimeMillis(); 
-		k = 49;
+		k = 12;
 		judge();
 //		while(k > 0) {
 //			if(!judge()) {
@@ -243,7 +258,7 @@ public class Main {
 //			k--;
 //		}
 //		k++;
-//		System.out.println("greedy:" + maxColor);
+		System.out.println("greedy:" + maxColor);
 		System.out.println("final k:" + k);
 		System.out.println("time:" + (System.currentTimeMillis() - time) / 1000);
 	}
